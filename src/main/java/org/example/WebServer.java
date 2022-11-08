@@ -4,21 +4,36 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Simple web server.
  */
 public class WebServer {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException, InterruptedException{
         // Port number for http request
         int port = args.length > 1 ? Integer.parseInt(args[1]) : 8080;
         // The maximum queue length for incoming connection
-        int queueLength = args.length > 2 ? Integer.parseInt(args[2]) : 50;;
+        int queueLength = args.length > 2 ? Integer.parseInt(args[2]) : 50;
+
+        ThreadSafeQueue<String> threadSafeQueue = new ThreadSafeQueue<>();
+
+        List<Worker> workers = new ArrayList<>();
+        int numOfThreads = args.length > 1 ? Integer.parseInt(args[1]) : 10;
+//        for (int i = 0; i < numOfThreads; i++) {
+//            Worker worker = new Worker(i);
+//            worker.start();
+//        }
+
+        for (int i = 0; i < numOfThreads; i++) {
+            Consumer<String> cons = new Consumer<>(i, threadSafeQueue);
+            cons.start();
+        }
 
         try (ServerSocket serverSocket = new ServerSocket(port, queueLength)) {
             System.out.println("Web Server is starting up, listening at port " + port + ".");
             System.out.println("You can access http://localhost:" + port + " now.");
-
             while (true) {
                 // Make the server socket wait for the next client request
                 Socket socket = serverSocket.accept();
@@ -28,13 +43,22 @@ public class WebServer {
                 // To read input from the client
                 BufferedReader input = new BufferedReader(
                         new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+
+
                 try {
                     // Get request
                     HttpRequest request = HttpRequest.parse(input);
 
+                    for (int i = 0; i < workers.size(); i++) {
+                        threadSafeQueue.add(workers.get(i).toString());
+                    }
+                    for (int i = 0; i < numOfThreads; i++) {
+                        threadSafeQueue.add(null);
+                    }
                     // Process request
-                    Processor proc = new Processor(socket, request);
-                    proc.process();
+                    Processor.process(threadSafeQueue,socket, request);
+                    System.out.println();
+
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }

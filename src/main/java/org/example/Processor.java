@@ -8,19 +8,15 @@ import java.net.Socket;
  * Processor of HTTP request.
  */
 public class Processor {
-    private final Socket socket;
-    private final HttpRequest request;
 
-    public Processor(Socket socket, HttpRequest request) {
-        this.socket = socket;
-        this.request = request;
-    }
+    public static void process(ThreadSafeQueue<String> threadSafeQueue, Socket socket, HttpRequest request) throws IOException {
 
-    public void process() throws IOException {
         // Print request that we received.
         System.out.println("Got request:");
         System.out.println(request.toString());
         System.out.println(request.getRequestLine());
+        System.out.println(request.getHeaders());
+        System.out.println(request.getMessageBody());
         System.out.flush();
 
         // To send response back to the client.
@@ -79,7 +75,6 @@ public class Processor {
             output.println("</html>");
             output.flush();
         }
-
 
         socket.close();
     }
